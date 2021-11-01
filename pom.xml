@@ -19,7 +19,11 @@
       <artifactId>AWSGlueETL</artifactId>
       <version>${project.version}</version>
     </dependency>
+<<<<<<< HEAD
   <dependency><groupId>jdk.tools</groupId><artifactId>jdk.tools</artifactId><scope>system</scope><version>1.8</version><systemPath>${jdk.home}/lib/tools.jar</systemPath></dependency> </dependencies> <properties><jdk.home>/usr/lib/jvm/java-8-openjdk-amd64</jdk.home></properties>
+=======
+  </dependencies>
+>>>>>>> effa3f26f69c1f7309695552777410d634e83831
   <repositories>
     <repository>
       <id>aws-glue-etl-artifacts</id>
