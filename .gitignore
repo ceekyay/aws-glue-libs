@@ -4,3 +4,7 @@ conf/
 jars/
 derby.log
 metastore_db/
+<<<<<<< HEAD
+=======
+*.DS_Store
+>>>>>>> effa3f26f69c1f7309695552777410d634e83831

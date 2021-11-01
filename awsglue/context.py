@@ -15,10 +15,13 @@ from pyspark.sql import SparkSession
 from py4j.java_gateway import java_import
 
 from awsglue.data_source import DataSource
+from awsglue.streaming_data_source import StreamingDataSource
 from awsglue.data_sink import DataSink
+from awsglue.dataframereader import DataFrameReader
 from awsglue.dynamicframe import DynamicFrame, DynamicFrameReader, DynamicFrameWriter, DynamicFrameCollection
 from awsglue.gluetypes import DataType
 from awsglue.utils import makeOptions, callsite
+from pyspark.sql.dataframe import DataFrame
 import pyspark
 import os
 import re
@@ -37,6 +40,9 @@ def register(sc):
     java_import(sc._jvm, "com.amazonaws.services.glue.util.AWSConnectionUtils")
     java_import(sc._jvm, "com.amazonaws.services.glue.util.GluePythonUtils")
     java_import(sc._jvm, "com.amazonaws.services.glue.errors.CallSite")
+    # java_import(sc._jvm, "com.amazonaws.services.glue.ml.FindMatches")
+    # java_import(sc._jvm, "com.amazonaws.services.glue.ml.FindIncrementalMatches")
+    # java_import(sc._jvm, "com.amazonaws.services.glue.ml.FillMissingValues")
 
 class GlueContext(SQLContext):
     Spark_SQL_Formats = {"parquet", "orc"}
@@ -46,6 +52,7 @@ class GlueContext(SQLContext):
         register(sparkContext)
         self._glue_scala_context = self._get_glue_scala_context(**options)
         self.create_dynamic_frame = DynamicFrameReader(self)
+        self.create_data_frame = DataFrameReader(self)
         self.write_dynamic_frame = DynamicFrameWriter(self)
         self.spark_session = SparkSession(sparkContext, self._glue_scala_context.getSparkSession())
         self._glue_logger = sparkContext._jvm.GlueLogger()
@@ -142,6 +149,38 @@ class GlueContext(SQLContext):
                             self, table_name)
         return source.getFrame(**kwargs)
 
+    def create_data_frame_from_catalog(self, database = None, table_name = None, redshift_tmp_dir = "",
+                                          transformation_ctx = "", push_down_predicate="", additional_options = {},
+                                          catalog_id = None, **kwargs):
+        """
+        Creates a DataFrame with catalog database, table name and an optional catalog id
+        :param database: database in catalog
+        :param table_name: table name
+        :param redshift_tmp_dir: tmp dir
+        :param transformation_ctx: transformation context
+        :param push_down_predicate
+        :param additional_options
+        :param catalog_id catalog id of the DataCatalog being accessed (account id of the data catalog).
+                Set to None by default (None defaults to the catalog id of the calling account in the service)
+        :return: data frame with potential errors
+        """
+        if database is not None and "name_space" in kwargs:
+            raise Exception("Parameter name_space and database are both specified, choose one.")
+        elif database is None and "name_space" not in kwargs:
+            raise Exception("Parameter name_space or database is missing.")
+        elif "name_space" in kwargs:
+            db = kwargs.pop("name_space")
+        else:
+            db = database
+
+        if table_name is None:
+            raise Exception("Parameter table_name is missing.")
+        source = StreamingDataSource(self._ssql_ctx.getCatalogSource(db, table_name, redshift_tmp_dir, transformation_ctx,
+                                                            push_down_predicate,
+                                                            makeOptions(self._sc, additional_options), catalog_id),
+                            self, table_name)
+        return source.getFrame()
+
     def create_dynamic_frame_from_options(self, connection_type, connection_options={},
                                           format=None, format_options={}, transformation_ctx = "", push_down_predicate= "",  **kwargs):
         """Creates a DynamicFrame with the specified connection and format.
@@ -158,6 +197,17 @@ class GlueContext(SQLContext):
             source.setFormat(format, **format_options)
 
         return source.getFrame(**kwargs)
+
+    def create_data_frame_from_options(self, connection_type, connection_options={},
+                                       format=None, format_options={}, transformation_ctx = "", push_down_predicate= "",  **kwargs):
+        """Creates a DataFrame with the specified connection and format. Used for streaming data sources
+        """
+        source = self.getStreamingSource(connection_type, format, transformation_ctx, push_down_predicate, **connection_options)
+
+        if (format and format not in self.Spark_SQL_Formats):
+            source.setFormat(format, **format_options)
+
+        return source.getFrame()
 
     def getSink(self, connection_type, format = None, transformation_ctx = "", **options):
         """Gets a DataSink object.
