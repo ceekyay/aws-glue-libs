@@ -2,7 +2,7 @@ from setuptools import find_packages, setup
 
 setup(
     name='awsglue',
-    version='1.0',
+    version='3.0',
     long_description=__doc__,
     packages=find_packages(),
     include_package_data=True,

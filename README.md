@@ -2,6 +2,9 @@
 
 This repository is forked from the official repo: https://github.com/awslabs/aws-glue-libs. The only difference between the 2 repo's is the `setup.py`, which has been added here to help install `awsglue` lib through `pip`.
 
+PIP installation command:
+```pip install git+ssh://git@github.com:ceekyay/aws-glue-libs.git#egg=awsglue```
+
 ---
 
 
